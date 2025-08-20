@@ -137,7 +137,11 @@ class BaseAsyncHttpTransport(View):
     def dispatch(self, request: HttpRequest, *args, **kwargs):
         resp = self._get_controller_method(request)
         if isinstance(resp, HttpResponse):
-            return resp
+            
+            async def _wrapper():
+                return resp
+            
+            return _wrapper()
         else:
             controller_method = resp
         if controller_method and controller_method in dir(self.Controller):

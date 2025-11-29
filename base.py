@@ -436,6 +436,7 @@ class ManyResourceAsyncHttpTransport(BaseAsyncHttpTransport):
                     status=400,
                     content=msg.encode()
                 )
+            logging.exception('Transport Exc', stacklevel=5)
             raise
         if data is not None:
             if isinstance(data, HttpResponse):

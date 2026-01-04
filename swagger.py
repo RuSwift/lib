@@ -143,6 +143,14 @@ class OpenAPIGenerator:
                     self._collect_models_from_type(ht, models)
 
         components = _pydantic_components(self._dedupe_models(models))
+        components["securitySchemes"] = {
+            "TokenAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "Token",
+                "description": "Token-based authentication",
+            }
+        }
 
         paths = self._build_paths(ops)
 
@@ -151,6 +159,7 @@ class OpenAPIGenerator:
             "info": {"title": self.title, "version": self.version},
             "paths": paths,
             "components": components,
+            "security": [{"TokenAuth": []}]
         }
 
     def _dedupe_models(self, models: List[Type[BaseModel]]) -> List[Type[BaseModel]]:
@@ -294,24 +303,39 @@ class OpenAPIGenerator:
             paths[api_path] = item
 
         return paths
+    
+    def _tags_from_path(self, path: str) -> list[str]:
+        parts = path.strip("/").split("/")
+        return [parts[1] if parts[0] == "api" and len(parts) > 1 else parts[0]]
 
     def _build_operation(self, path_str: str, op: _Operation) -> Dict[str, Any]:
         ctrl = op.controller
         handler = getattr(ctrl, op.handler_name, None)
 
         summary = f"{ctrl.__name__}.{op.handler_name}"
-        tags = [ctrl.__name__]
 
-        parameters = self._build_parameters(path_str, op, handler)
-        request_body = self._build_request_body(op)
-        responses = self._build_responses(op, handler)
+        # NEW: description из docstring метода
+        description = inspect.getdoc(handler) if handler else None
 
+        tags = self._tags_from_path(path_str)
+
+        if ctrl.__name__ == 'MassPaymentController':
+            print('OK')
+            
         operation: Dict[str, Any] = {
             "summary": summary,
             "tags": tags,
-            "parameters": parameters,
-            "responses": responses,
+            "responses": self._build_responses(op, handler),
         }
+
+        if description:
+            operation["description"] = description
+
+        parameters = self._build_parameters(path_str, op, handler)
+        if parameters:
+            operation["parameters"] = parameters
+
+        request_body = self._build_request_body(op)
         if request_body:
             operation["requestBody"] = request_body
 

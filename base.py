@@ -3,7 +3,7 @@ import inspect
 import logging
 from dataclasses import dataclass
 from abc import abstractmethod
-from typing import Type, List, Optional, Any, Callable, Union, Literal, Dict, _GenericAlias
+from typing import Type, List, Optional, Any, Callable, Union, Literal, Dict, get_origin
 
 from pydantic import BaseModel, Extra, ValidationError
 from django.urls import path
@@ -305,8 +305,11 @@ class BaseAsyncHttpTransport(View):
         for name, val in kwargs.items():
             if name in spec.annotations:
                 typ = spec.annotations[name]
-                typ_is_generis = isinstance(typ, _GenericAlias)
-                if typ is not Any and isinstance(val, list) and len(val) == 1 and not typ_is_generis and not isinstance(val, typ):
+                typ_is_generic = (
+                    typ is not Any
+                    and get_origin(typ) is not None
+                )
+                if typ is not Any and isinstance(val, list) and len(val) == 1 and not typ_is_generic and not isinstance(val, typ):
                     val = typ(val[0])
                 else:
                     try:
